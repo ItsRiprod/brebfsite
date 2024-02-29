@@ -13,6 +13,25 @@ hr {
   width: 50%;
 }
 
-div {
-  
+.counter {
+  position: absolute; 
+  z-index: 999;
+  padding: 0 5px;
+  border-radius: 5px;
+  text-justify: center;
+  text-align: center;
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5); 
+  background-color: rgba(0, 0, 0, 0.8); 
+  user-select: none;
+}
+
+img {
+  width: 10vw;
+  transform: translateX(-5vw) translateY(-5vw);
+  transition: 0.5s;
+  user-select: none;
+  &:hover {
+    transform: translateX(-5vw) translateY(-5vw) scale(1.1);
+
+  }
 }

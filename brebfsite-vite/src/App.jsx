@@ -20,21 +20,25 @@ function MouseCounter({ counterPosition, totalCount }) {
 }
 
 function BreadLayer({ breadCoordinates }) {
+  const renderBread = (coordinate, index) => (
+    <img
+      key={index}
+      src={breadImage}
+      alt="bread"
+      style={{
+        position: 'absolute',
+        left: coordinate.x,
+        top: coordinate.y,
+      }}
+      draggable="false"
+    />
+  );
+
+  const breadElements = () => breadCoordinates.map(renderBread);
+
   return (
     <>
-      {breadCoordinates.map((coordinate, index) => (
-        <img
-          key={index}
-          src={breadImage}
-          alt="bread"
-          style={{
-            position: "absolute",
-            left: coordinate.x,
-            top: coordinate.y
-          }}
-          draggable="false"
-        />
-      ))}
+      {breadElements()}
     </>
   );
 }
@@ -68,7 +72,7 @@ function BreadText({ totalCount, milestone }) {
   );
 }
 
-function Widget({ count }) {
+function Widget({ count, milestone }) {
   const [leaderboard, setLeaderboard] = useState([-1,-1,-1]);
   const [lastCount, setLastCount] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -76,6 +80,7 @@ function Widget({ count }) {
   const [offsetY, setOffsetY] = useState(0);
   const [top, setTop] = useState(50);
   const [left, setLeft] = useState(50);
+  
   
   useEffect(() => {
 
@@ -171,7 +176,7 @@ function Widget({ count }) {
               {index}: Score: {position}
             </div>
           ))}
-          <div className="leaderboard-item">You: Score: {count}</div>
+          
         </div>
       </div>
       <button
@@ -182,6 +187,10 @@ function Widget({ count }) {
       >
         leaderboard
       </button>
+      <div className="top">
+        Milestone {milestone}
+        <div className="leaderboard-item">You: Score: {count}</div>
+      </div>
     </div>
   );
 }
@@ -189,6 +198,7 @@ function Widget({ count }) {
 function MainApp() {
   const [milestone, setMilestone] = useState(-1); // Initial milestone set to 1000
   const [breadCoordinates, setBreadCoordinates] = useState([]);
+  const [breadCoordinatesArchive, setBreadCoordinatesArchive] = useState([]);
   const [breadCounter, setBreadCounter] = useState(0);
   const [sessionCounter, setSessionCounter] = useState(0);
   const [dbCounter, setDbCounter] = useState(0);
@@ -197,14 +207,14 @@ function MainApp() {
   useEffect(() => {
     const handleClick = (event) => {
       const { clientX, clientY } = event;
-      setBreadCoordinates(prevCoordinates => [...prevCoordinates, { x: clientX, y: clientY }]);
+      setBreadCoordinates(prevCoordinates => [...prevCoordinates, { x: clientX + window.scrollX , y: clientY + window.scrollY }]);
       setBreadCounter(prevCounter => prevCounter + 1);
       setSessionCounter(prevCounter => prevCounter + 1);
     };
 
     const handleMouseMove = (event) => {
       const { clientX, clientY } = event;
-      setCounterPosition({ x: clientX, y: clientY });
+      setCounterPosition({ x: clientX + window.scrollX, y: clientY + window.scrollY });
     };
 
     document.addEventListener("click", handleClick);
@@ -234,7 +244,7 @@ function MainApp() {
         setBreadCounter(0);
         updateBreadCounterInDatabase(temp);
       }
-    }, 200);
+    }, 350);
 
     if (breadCounter + dbCounter >= milestone) {
       if (milestone < 0) {
@@ -246,13 +256,19 @@ function MainApp() {
           }
         });
       } else {
-        const newMilestone = Math.floor(Math.random() * 1000) + milestone;
+        const newMilestone = Math.floor(Math.random() * 2000) + milestone;
         setMilestone(newMilestone);
         updateBreadMilestoneInDatabase(newMilestone);
         const temp = breadCounter + dbCounter;
         setBreadCounter(0);
         updateBreadCounterInDatabase(temp);
       }
+    }
+
+    if (breadCounter > sessionCounter/15) {
+        const temp = breadCounter + dbCounter;
+        setBreadCounter(0);
+        updateBreadCounterInDatabase(temp);
     }
 
 
@@ -279,7 +295,7 @@ function MainApp() {
 
   return (
     <>
-      <Widget count={sessionCounter}/>
+      <Widget count={sessionCounter} milestone={milestone}/>
       <MouseCounter counterPosition={counterPosition} totalCount={breadCounter + dbCounter} />
       <BreadText totalCount={breadCounter + dbCounter} milestone={milestone} />
       <BreadLayer breadCoordinates={breadCoordinates} />

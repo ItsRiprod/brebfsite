@@ -31,19 +31,18 @@ img {
   transform: translateX(-50px) translateY(-50px);
   transition: 0.5s;
   user-select: none;
-  &:hover {
-    transform: translateX(-50px) translateY(-50px) scale(1.1);
-
-  }
-  &:nth-last-of-type(n + 1000) {
-    &:hover {
-      transform: translateX(-50px) translateY(-50px);
+  
+  
+  &:nth-last-of-type(-n + 100):hover
+    {
+      transform: translateX(-50px) translateY(-50px) scale(1.1);
     }
-  }
 }
 
 .milestone {
   transition: 1s;
+  user-select: none;
+  z-index: 999;
 
 }
 .milestone-changed {
@@ -68,6 +67,9 @@ img {
   .top, .bottom {
     transform: scaleY(0);
     transition: transform 0.5s ease;
+  }
+  .top {
+    align-self: center;
   }
   &:hover {
     .top, .bottom {

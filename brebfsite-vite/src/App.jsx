@@ -19,20 +19,32 @@ function MouseCounter({ counterPosition, totalCount }) {
   );
 }
 
-function BreadLayer({ breadCoordinates }) {
-  const renderBread = (coordinate, index) => (
-    <img
-      key={index}
-      src={breadImage}
-      alt="bread"
-      style={{
-        position: 'absolute',
-        left: coordinate.x,
-        top: coordinate.y,
-      }}
-      draggable="false"
-    />
-  );
+function BreadLayer({ breadCoordinates, totalCount }) {
+  const renderBread = (coordinate, index) => {
+    if (coordinate == null) {
+      return null;
+    }
+
+    if ((coordinate.num - totalCount) + 500 > 0) {
+      
+      return (<img
+        key={index}
+        src={breadImage}
+        alt="bread"
+        style={{
+          position: 'absolute',
+          left: coordinate.x,
+          top: coordinate.y,
+          opacity: 0.01 * ((coordinate.num - totalCount) + 500)
+        }}
+        draggable="false"
+        />)
+      } else {
+        
+        return null;
+      }
+    }
+
 
   const breadElements = () => breadCoordinates.map(renderBread);
 
@@ -194,22 +206,34 @@ function Widget({ count, milestone }) {
     </div>
   );
 }
-
+/*
+* Main Application
+*/
 function MainApp() {
-  const [milestone, setMilestone] = useState(-1); // Initial milestone set to 1000
+  const [milestone, setMilestone] = useState(-1);
   const [breadCoordinates, setBreadCoordinates] = useState([]);
-  const [breadCoordinatesArchive, setBreadCoordinatesArchive] = useState([]);
+  const [displayCounter, setDisplayCounter] = useState(0);
   const [breadCounter, setBreadCounter] = useState(0);
   const [sessionCounter, setSessionCounter] = useState(0);
   const [dbCounter, setDbCounter] = useState(0);
   const [counterPosition, setCounterPosition] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
+
+    const addBreadCoordinates = (clientX, clientY, num) => {
+      const newCoordinates = { x: Math.round((clientX + window.scrollX) / 5) * 5,  y: Math.round((clientY + window.scrollY) / 5) * 5, num: num };
+      // Check if the new coordinates already exist in the breadCoordinates
+      if (!breadCoordinates.some(coord => coord.x === newCoordinates.x && coord.y === newCoordinates.y)) {
+          setBreadCoordinates(prevCoordinates => [...prevCoordinates, newCoordinates]);
+      }
+    };
+
     const handleClick = (event) => {
       const { clientX, clientY } = event;
-      setBreadCoordinates(prevCoordinates => [...prevCoordinates, { x: clientX + window.scrollX , y: clientY + window.scrollY }]);
       setBreadCounter(prevCounter => prevCounter + 1);
+      addBreadCoordinates(clientX, clientY, breadCounter + dbCounter);
       setSessionCounter(prevCounter => prevCounter + 1);
+      setDisplayCounter(prevCount => prevCount + 1);
     };
 
     const handleMouseMove = (event) => {
@@ -232,21 +256,30 @@ function MainApp() {
       const breadRef = ref(database, '/');
       update(breadRef, { milestonebread: count });
     };
+    const updateBreadLocationsInDatabase = (coordinates) => {
+      if (coordinates.length > 10) {
+        const coordinatesRef = ref(database, `/`);
+        update(coordinatesRef, { coordinates });
+      }
+    };
 
     const updateBreadCounterInDatabase = (count) => {
-      const breadRef = ref(database, '/');
-      update(breadRef, { bread: count });
+ 
+        const breadRef = ref(database, '/');
+        update(breadRef, { bread: count });
+
     };
 
     const intervalId = setInterval(() => {
-      if (breadCounter > 0) {
+      if (breadCounter > 0 && dbCounter > 1000) {
+        updateBreadLocationsInDatabase(breadCoordinates);
         const temp = breadCounter + dbCounter;
         setBreadCounter(0);
         updateBreadCounterInDatabase(temp);
       }
     }, 350);
 
-    if (breadCounter + dbCounter >= milestone) {
+    if (breadCounter + dbCounter >= milestone && dbCounter > 500) {
       if (milestone < 0) {
         const milestoneRef = ref(database, '/milestonebread');
         get(milestoneRef).then((snapshot) => {
@@ -265,7 +298,8 @@ function MainApp() {
       }
     }
 
-    if (breadCounter > sessionCounter/15) {
+    if (breadCounter > sessionCounter/15 && dbCounter > 500) {
+        updateBreadLocationsInDatabase(breadCoordinates);
         const temp = breadCounter + dbCounter;
         setBreadCounter(0);
         updateBreadCounterInDatabase(temp);
@@ -280,25 +314,58 @@ function MainApp() {
   useEffect(() => {
     const breadRef = ref(database, '/bread');
     const milestoneRef = ref(database, '/milestonebread');
+    const coordRef = ref(database, '/coordinates');
     const unsubscribeBread = onValue(breadRef, (snapshot) => {
       setDbCounter(snapshot.val());
     });
     const unsubscribeMilestone = onValue(milestoneRef, (snapshot) => {
       setMilestone(snapshot.val());
     });
+    const unsubscribeCoords = onValue(coordRef, (snapshot) => {
+      setBreadCoordinates(snapshot.val());
+      
+    });
 
     return () => {
       off(breadRef, 'value', unsubscribeBread);
       off(milestoneRef, 'value', unsubscribeMilestone);
+      off(coordRef, 'value', unsubscribeCoords);
     };
   }, []);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (displayCounter < (dbCounter) && displayCounter != 0) {
+
+        const temp = (breadCounter + dbCounter);
+        
+        const step = Math.ceil((temp-displayCounter) / 10); // Define a step for gradual increase
+        
+        const updateBreadCounter = () => {
+          if (displayCounter < temp) {
+            setDisplayCounter(prevCounter => prevCounter + step);
+          } else {
+            clearInterval(intervalId); // Clear interval once reached or exceeded the target
+          }
+        };
+
+        updateBreadCounter(); // Call the function once immediately
+      } else if (displayCounter == 0 && dbCounter != 0) {
+        setDisplayCounter(dbCounter);
+      }
+    }, 100); // Adjust the interval as needed
+  
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [displayCounter,  dbCounter]);
 
   return (
     <>
       <Widget count={sessionCounter} milestone={milestone}/>
-      <MouseCounter counterPosition={counterPosition} totalCount={breadCounter + dbCounter} />
-      <BreadText totalCount={breadCounter + dbCounter} milestone={milestone} />
-      <BreadLayer breadCoordinates={breadCoordinates} />
+      <MouseCounter counterPosition={counterPosition} totalCount={displayCounter} />
+      <BreadText totalCount={displayCounter} milestone={milestone} />
+      <BreadLayer breadCoordinates={breadCoordinates} totalCount={breadCounter + dbCounter} />
     </>
   );
 }

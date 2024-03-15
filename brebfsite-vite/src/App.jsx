@@ -130,8 +130,10 @@ function Widget({ count, milestone }) {
   useEffect(() => {
     
     const updateLeaderboardInDatabase = (lb, index) => {
-      const leaderboardRef = ref(database, `/leaderboard/${index}`);
-      set(leaderboardRef, lb); // Assuming 'lb' is the entire leaderboard array
+      if (lb.length > 2) {
+        const leaderboardRef = ref(database, `/leaderboard/${index}`);
+        set(leaderboardRef, lb); // Assuming 'lb' is the entire leaderboard array
+      }
     };
     
     const intervalId = setInterval(() => {

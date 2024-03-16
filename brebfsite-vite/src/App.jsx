@@ -19,13 +19,14 @@ function MouseCounter({ counterPosition, totalCount }) {
   );
 }
 
-function BreadLayer({ breadCoordinates, totalCount }) {
+function BreadLayer({ breadCoordinates, totalCount, dbBreadCoordinates }) {
+  
   const renderBread = (coordinate, index) => {
     if (coordinate == null) {
       return null;
     }
 
-    if ((coordinate.num - totalCount) + 500 > 0) {
+    if ((coordinate.num - totalCount) + 1000 > 0) {
       
       return (<img
         key={index}
@@ -35,7 +36,7 @@ function BreadLayer({ breadCoordinates, totalCount }) {
           position: 'absolute',
           left: coordinate.x,
           top: coordinate.y,
-          opacity: 0.01 * ((coordinate.num - totalCount) + 500)
+          opacity: Math.min(0.01 * ((coordinate.num - totalCount) + 1000))
         }}
         draggable="false"
         />)
@@ -47,9 +48,11 @@ function BreadLayer({ breadCoordinates, totalCount }) {
 
 
   const breadElements = () => breadCoordinates.map(renderBread);
+  const dbBreadElements = () => dbBreadCoordinates.map(renderBread);
 
   return (
     <>
+      {dbBreadElements()}
       {breadElements()}
     </>
   );
@@ -214,6 +217,7 @@ function Widget({ count, milestone }) {
 function MainApp() {
   const [milestone, setMilestone] = useState(-1);
   const [breadCoordinates, setBreadCoordinates] = useState([]);
+  const [dbBreadCoordinates, setDbBreadCoordinates] = useState([]);
   const [displayCounter, setDisplayCounter] = useState(0);
   const [breadCounter, setBreadCounter] = useState(0);
   const [sessionCounter, setSessionCounter] = useState(0);
@@ -258,11 +262,20 @@ function MainApp() {
       const breadRef = ref(database, '/');
       update(breadRef, { milestonebread: count });
     };
-    const updateBreadLocationsInDatabase = (coordinates) => {
-      if (coordinates.length > 10) {
-        const coordinatesRef = ref(database, `/`);
-        update(coordinatesRef, { coordinates });
-      }
+
+    const updateBreadLocationsInDatabase = (coordinates, dbcoordinates) => {
+      
+      // Removing old bread
+      const updatedDbCoordinates = dbcoordinates.filter(dbcoord => 
+          (dbcoord.num + 1000) > dbCounter
+      );
+
+      
+      const finalCoordinates = updatedDbCoordinates.concat(coordinates);
+      
+        
+      const coordinatesRef = ref(database, `/`);
+      update(coordinatesRef, { coordinates: finalCoordinates });
     };
 
     const updateBreadCounterInDatabase = (count) => {
@@ -274,7 +287,8 @@ function MainApp() {
 
     const intervalId = setInterval(() => {
       if (breadCounter > 0 && dbCounter > 1000) {
-        updateBreadLocationsInDatabase(breadCoordinates);
+        updateBreadLocationsInDatabase(breadCoordinates, dbBreadCoordinates);
+        setBreadCoordinates([]);
         const temp = breadCounter + dbCounter;
         setBreadCounter(0);
         updateBreadCounterInDatabase(temp);
@@ -301,7 +315,8 @@ function MainApp() {
     }
 
     if (breadCounter > sessionCounter/15 && dbCounter > 500) {
-        updateBreadLocationsInDatabase(breadCoordinates);
+        updateBreadLocationsInDatabase(breadCoordinates, dbBreadCoordinates);
+        setBreadCoordinates([]);
         const temp = breadCounter + dbCounter;
         setBreadCounter(0);
         updateBreadCounterInDatabase(temp);
@@ -324,7 +339,7 @@ function MainApp() {
       setMilestone(snapshot.val());
     });
     const unsubscribeCoords = onValue(coordRef, (snapshot) => {
-      setBreadCoordinates(snapshot.val());
+      setDbBreadCoordinates(snapshot.val());
       
     });
 
@@ -367,9 +382,10 @@ function MainApp() {
       <Widget count={sessionCounter} milestone={milestone}/>
       <MouseCounter counterPosition={counterPosition} totalCount={displayCounter} />
       <BreadText totalCount={displayCounter} milestone={milestone} />
-      <BreadLayer breadCoordinates={breadCoordinates} totalCount={breadCounter + dbCounter} />
+      <BreadLayer breadCoordinates={breadCoordinates} dbBreadCoordinates={dbBreadCoordinates} totalCount={breadCounter + dbCounter} />
     </>
   );
 }
+
 
 export default MainApp;

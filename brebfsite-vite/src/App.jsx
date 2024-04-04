@@ -20,17 +20,38 @@ function MouseCounter({ counterPosition, totalCount }) {
 }
 
 function BreadLayer({ breadCoordinates, totalCount, dbBreadCoordinates }) {
+  const [breadImages, setBreadImages] = useState([]);
+
+
   
+  
+  useEffect(() => {
+    // Function to import bread images dynamically
+    const importBreadImages = async () => {
+      const images = [];
+      for (let i = 1; i <= 110; i++) {
+        // Dynamically import each bread image
+        const { default: breadImage } = await import(`/images/${i}.png`);
+        images.push(breadImage);
+      }
+      // Set the array of imported bread images
+      setBreadImages(images);
+    };
+
+    // Call the function to import bread images
+    importBreadImages();
+  }, []);
+
   const renderBread = (coordinate, index) => {
     if (coordinate == null) {
       return null;
     }
 
     if ((coordinate.num - totalCount) + 1000 > 0) {
-      
+      const type = (coordinate.type != null) ? breadImages[coordinate.type] : breadImage;
       return (<img
         key={index}
-        src={breadImage}
+        src={type}
         alt="bread"
         style={{
           position: 'absolute',
@@ -41,7 +62,6 @@ function BreadLayer({ breadCoordinates, totalCount, dbBreadCoordinates }) {
         draggable="false"
         />)
       } else {
-        
         return null;
       }
     }
@@ -227,7 +247,8 @@ function MainApp() {
   useEffect(() => {
 
     const addBreadCoordinates = (clientX, clientY, num) => {
-      const newCoordinates = { x: Math.round((clientX + window.scrollX) / 5) * 5,  y: Math.round((clientY + window.scrollY) / 5) * 5, num: num };
+      const randomType = Math.floor(Math.random() * 110) + 1;
+      const newCoordinates = { x: Math.round((clientX + window.scrollX) / 5) * 5,  y: Math.round((clientY + window.scrollY) / 5) * 5, type: randomType, num: num };
       // Check if the new coordinates already exist in the breadCoordinates
       if (!breadCoordinates.some(coord => coord.x === newCoordinates.x && coord.y === newCoordinates.y)) {
           setBreadCoordinates(prevCoordinates => [...prevCoordinates, newCoordinates]);

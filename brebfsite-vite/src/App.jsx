@@ -31,7 +31,7 @@ function BreadLayer({ breadCoordinates, totalCount, dbBreadCoordinates }) {
       const images = [];
       for (let i = 1; i <= 110; i++) {
         // Dynamically import each bread image
-        const { default: breadImage } = await import(`/images/${i}.png`);
+        const { default: breadImage } = await import(`./assets/images/${i}.png`);
         images.push(breadImage);
       }
       // Set the array of imported bread images

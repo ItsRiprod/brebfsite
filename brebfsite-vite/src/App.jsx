@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import "./App.css";
 import breadImage from "/bread.svg"; // Import bread.svg
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, update, onValue, off, get, set } from "firebase/database";
+import { getDatabase, ref, update, onValue, off, get, set, increment } from "firebase/database";
 
 const firebaseConfig = {
   databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL
@@ -19,38 +19,25 @@ function MouseCounter({ counterPosition, totalCount }) {
   );
 }
 
-function BreadLayer({ localBreadCoordinates, totalCount, dbBreadCoordinates, randomBread, setRandomBread}) {
-  const [breadImages, setBreadImages] = useState([]);
-
-
+function BreadLayer({ breadImages, breadCoordinates, totalCount, dbBreadCoordinates, randomBread, setRandomBread, breadAmount, clientId}) {
   
-  
-  useEffect(() => {
-    // Function to import bread images dynamically
-    const importBreadImages = async () => {
-      const images = [];
-      for (let i = 1; i <= 110; i++) {
-        // Dynamically import each bread image
-        const { default: breadImage } = await import(`./assets/images/${i}.png`);
-        images.push(breadImage);
-      }
-      // Set the array of imported bread images
-      setBreadImages(images);
-      setRandomBread(true);
-    };
-
-    // Call the function to import bread images
-    importBreadImages();
-  }, [randomBread]);
 
   const renderBread = (coordinate, index) => {
     if (coordinate == null) {
       return null;
     }
+  
+    coordinate.fade = false;
+    if (coordinate.id != clientId) {
+      coordinate.fade = true;
+    }
+   
 
-    if ((coordinate.num - totalCount) + 1000 > 0) {
-      const type = (randomBread) ? (coordinate.type != null) ? breadImages[coordinate.type] : breadImage : breadImage;
-      return (<img
+    if ((coordinate.num - totalCount) + breadAmount + 100 > 0) {
+      const type = (randomBread != -2) ? (coordinate.type != null) ? breadImages[coordinate.type] : breadImage : breadImage;
+      return (
+      <img
+        className={(coordinate.fade ? " fade " : "") + coordinate.parent + " background"}
         key={index}
         src={type}
         alt={breadImage}
@@ -58,7 +45,7 @@ function BreadLayer({ localBreadCoordinates, totalCount, dbBreadCoordinates, ran
           position: 'absolute',
           left: coordinate.x,
           top: coordinate.y,
-          opacity: Math.min(0.01 * ((coordinate.num - totalCount) + 1000))
+          opacity: Math.max(0.01 * ((coordinate.num - totalCount) + breadAmount), 0)
         }}
         draggable="false"
         />)
@@ -68,8 +55,11 @@ function BreadLayer({ localBreadCoordinates, totalCount, dbBreadCoordinates, ran
     }
 
 
-  const breadElements = () => localBreadCoordinates.map(renderBread);
-  const dbBreadElements = () => dbBreadCoordinates.map(renderBread);
+    
+    
+    const dbBreadElements = () => Object.values(dbBreadCoordinates).filter((old) => old.id != clientId).map(renderBread);
+    const breadElements = () => Object.values(breadCoordinates).map(renderBread);
+    
 
   return (
     <>
@@ -107,8 +97,12 @@ function BreadText({ totalCount, milestone }) {
     </>
   );
 }
-
-function Widget({ count, milestone, totalCount }) {
+/**
+ * The widget of widgets
+ * @param {*} param0 
+ * @returns 
+ */
+function Widget({ count, milestone, totalCount, breadImages, randomBread, setRandomBread }) {
   const [leaderboard, setLeaderboard] = useState([-1,-1,-1]);
   const [lastCount, setLastCount] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -210,8 +204,11 @@ function Widget({ count, milestone, totalCount }) {
     };
   }, []);
 
+  const handleThumbnailClick = (index) => {
+    setRandomBread(index);
+  };
 
-  return (
+  return (<>
     <div id="helper" style={{ top: `${top}px`, left: `${left}px` }}>
       <div className="bottom">
         <div className="leaderboard">
@@ -237,6 +234,22 @@ function Widget({ count, milestone, totalCount }) {
         <div className="leaderboard-item">Total: {totalCount}</div>
       </div>
     </div>
+    <section style={{ top: `${top + 103}px`, left: `${left}px` }} id="settings" className={(isClicked ? "" : "hidden")}>
+          <div>
+            <button onClick={() => handleThumbnailClick(-1)}>Random</button>
+            <button onClick={() => handleThumbnailClick(-2)}>Simple</button>
+          </div>
+          <div>
+          {breadImages.map((img, index) => (
+            <div key={index} className="thumbnail-container">
+              <img className="thumbnail" src={img} alt="bread" />
+              <button onClick={() => handleThumbnailClick(index)}>{index}</button>
+            </div>
+          ))}
+
+          </div>
+    </section>
+  </>
   );
 }
 /*
@@ -244,27 +257,49 @@ function Widget({ count, milestone, totalCount }) {
 */
 function MainApp() {
   const [milestone, setMilestone] = useState(-1);
-  
-  const [localBreadCoordinates, setLocalBreadCoordinates] = useState([]);
-  const [dbBreadCoordinates, setDbBreadCoordinates] = useState([]);
-  
+  const [breadCoordinates, setBreadCoordinates] = useState([]);
   const [displayCounter, setDisplayCounter] = useState(0);
+  const [dbBreadCoordinates, setDbBreadCoordinates] = useState([]);
   const [breadCounter, setBreadCounter] = useState(0);
-  const [dbCounter, setDbCounter] = useState(0);
-  
   const [sessionCounter, setSessionCounter] = useState(0);
+  const [dbCounter, setDbCounter] = useState(0);
   const [counterPosition, setCounterPosition] = useState({ x: 0, y: 0 });
-  const [randomBread, setRandomBread] = useState(false);
+  const [randomBread, setRandomBread] = useState(-2);
   const [clientId, setClientid] = useState(Math.floor(Math.random() * 10000));
+
+  const breadAmount = 1000;
+  const [breadImages, setBreadImages] = useState([]);
+
+
+  
+  
+  useEffect(() => {
+    // Function to import bread images dynamically
+    const importBreadImages = async () => {
+      const images = [];
+      for (let i = 1; i <= 110; i++) {
+        // Dynamically import each bread image
+        const { default: breadImage } = await import(`./assets/images/${i}.png`);
+        images.push(breadImage);
+      }
+      // Set the array of imported bread images
+      setBreadImages(images);
+      setRandomBread(-1);
+    };
+
+    // Call the function to import bread images
+    importBreadImages();
+  }, []);
 
   useEffect(() => {
 
     const addBreadCoordinates = (clientX, clientY, num) => {
-      const randomType = Math.floor(Math.random() * 109) + 1;
+      const randomType = (randomBread == -1 || randomBread == -2) ? Math.floor(Math.random() * 109) + 1 : randomBread;
       const newCoordinates = { x: Math.round((clientX + window.scrollX) / 5) * 5,  y: Math.round((clientY + window.scrollY) / 5) * 5, type: randomType, num: num, id: clientId };
-      // Check if the new coordinates already exist in the localBreadCoordinates
-      if (!localBreadCoordinates.some(coord => coord.x === newCoordinates.x && coord.y === newCoordinates.y)) {
-          setLocalBreadCoordinates(prevCoordinates => [...prevCoordinates, newCoordinates]);
+      // Check if the new coordinates already exist in the breadCoordinates
+      if (!breadCoordinates.some(coord => coord.x === newCoordinates.x && coord.y === newCoordinates.y)) {
+        // Add the new coordinates to the filtered array
+        setBreadCoordinates((oldBread) => [...oldBread, newCoordinates]);  
       }
     };
 
@@ -288,7 +323,7 @@ function MainApp() {
       document.removeEventListener("click", handleClick);
       document.removeEventListener("mousemove", handleMouseMove);
     };
-  }, [sessionCounter]);
+  }, [sessionCounter, randomBread]);
 
   useEffect(() => {
     
@@ -298,35 +333,43 @@ function MainApp() {
     };
 
     const updateBreadLocationsInDatabase = (coordinates, dbcoordinates) => {
-      
-      // Removing old bread
-      const updatedDbCoordinates = dbcoordinates.filter(dbcoord => 
-          (dbcoord.num + 1000) > dbCounter
-      );
-
-      
-      const finalCoordinates = updatedDbCoordinates.concat(coordinates);
-      
-        
       const coordinatesRef = ref(database, `/`);
-      update(coordinatesRef, { coordinates: finalCoordinates });
+      const updates = {}
+      
+      if (Object.keys(dbcoordinates).length > breadAmount + 200) {
+        for(var key in dbcoordinates) {
+          
+          const bread = dbcoordinates[key];
+          if (bread.num < displayCounter - breadAmount) {
+            updates[`/coordinates/${key}`] = null;
+          }
+        }
+        setBreadCoordinates((breadCoordinates) => breadCoordinates.filter(coord => coord.num >= displayCounter - breadAmount));
+      }
+      coordinates.map(coord => {
+        if (coord.num >= displayCounter - breadAmount) {
+          updates[`/coordinates/${coord.num+"-"+clientId}`] = {num: coord.num, x: coord.x, y: coord.y, type: coord.type, id: coord.id};
+        }
+      });
+
+      update(coordinatesRef, updates ).then(() => {});
     };
 
     const updateBreadCounterInDatabase = (count) => {
- 
         const breadRef = ref(database, '/');
-        update(breadRef, { bread: count });
+        
+        const updates = {};
+        updates[`/bread`] = increment(count);
+        update(breadRef, updates);
 
     };
 
     const intervalId = setInterval(() => {
-      if (breadCounter > 0 && dbCounter > 1000) {
-        updateBreadLocationsInDatabase(localBreadCoordinates, dbBreadCoordinates);
-        setLocalBreadCoordinates([]);
+      if (breadCounter > 0 && displayCounter > 1000) {
+        updateBreadLocationsInDatabase(breadCoordinates, dbBreadCoordinates);
         
-        const temp = breadCounter + dbCounter;
+        updateBreadCounterInDatabase(breadCounter);
         setBreadCounter(0);
-        updateBreadCounterInDatabase(temp);
       }
     }, 350);
 
@@ -343,18 +386,17 @@ function MainApp() {
         const newMilestone = Math.floor(Math.random() * 2000) + milestone;
         setMilestone(newMilestone);
         updateBreadMilestoneInDatabase(newMilestone);
-        const temp = breadCounter + dbCounter;
+        
+        updateBreadCounterInDatabase(breadCounter);
         setBreadCounter(0);
-        updateBreadCounterInDatabase(temp);
       }
     }
 
     if (breadCounter > sessionCounter/15 && dbCounter > 500) {
-        updateBreadLocationsInDatabase(localBreadCoordinates, dbBreadCoordinates);
-        setLocalBreadCoordinates([]);
-        const temp = breadCounter + dbCounter;
+        updateBreadLocationsInDatabase(breadCoordinates, dbBreadCoordinates);
+        
+        updateBreadCounterInDatabase(breadCounter);
         setBreadCounter(0);
-        updateBreadCounterInDatabase(temp);
     }
 
 
@@ -375,7 +417,6 @@ function MainApp() {
     });
     const unsubscribeCoords = onValue(coordRef, (snapshot) => {
       setDbBreadCoordinates(snapshot.val());
-      
     });
 
     return () => {
@@ -414,10 +455,10 @@ function MainApp() {
 
   return (
     <>
-      <Widget setRandomBread={setRandomBread} count={sessionCounter} milestone={milestone} totalCount={displayCounter}/>
+      <Widget breadImages={breadImages} randomBread={randomBread} setRandomBread={setRandomBread} count={sessionCounter} milestone={milestone} totalCount={displayCounter}/>
       <MouseCounter counterPosition={counterPosition} totalCount={displayCounter} />
       <BreadText totalCount={displayCounter} milestone={milestone} />
-      <BreadLayer setRandomBread={setRandomBread} randomBread={randomBread} localBreadCoordinates={localBreadCoordinates} dbBreadCoordinates={dbBreadCoordinates} totalCount={breadCounter + dbCounter} />
+      <BreadLayer breadImages={breadImages} clientId={clientId} breadAmount={breadAmount} setRandomBread={setRandomBread} randomBread={randomBread} breadCoordinates={breadCoordinates} dbBreadCoordinates={dbBreadCoordinates} totalCount={breadCounter + dbCounter} />
     </>
   );
 }

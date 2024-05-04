@@ -26,18 +26,42 @@ hr {
   user-select: none;
 }
 
-img {
+@keyframes fadeAndScale {
+  0% {
+    transform: translateX(-50px) translateY(-50px) scale(0.1);
+  }
+  100% {
+    transform: translateX(-50px) translateY(-50px) scale(1);
+  }
+}
+img.background {
   width: 100px;
-  transform: translateX(-50px) translateY(-50px);
-  transition: transform 0.5s;
+  transform: translateX(-50px) translateY(-50px) scale(1);
+  transition: transform 0.5s, opacity 1s;
   user-select: none;
-  
-  
+  &.fade {
+    animation: fadeAndScale 0.5s forwards;
+  }
   &:nth-last-of-type(-n + 100):hover
     {
       transform: translateX(-50px) translateY(-50px) scale(1.1);
     }
 }
+
+img.thumbnail {
+  width: 100px;
+  transform: translateX(-50px) translateY(50px) scale(1);
+  transition: transform 0.5s, opacity 1s;
+  user-select: none;
+  &.fade {
+    animation: fadeAndScale 0.5s forwards;
+  }
+  &:nth-last-of-type(-n + 100):hover
+    {
+      transform: translateX(-50px) translateY(40px) scale(1.1);
+    }
+}
+
 
 .milestone {
   transition: 1s;
@@ -50,10 +74,28 @@ img {
   opacity: 0;
 }
 
-
+#settings {
+  position:fixed;
+  padding: 5px;
+  border-radius: 15px;
+  width: 400px;
+  z-index: 999;
+  left: 0;
+  top:0;
+  height: 50vh;
+  background-color: rgb(0, 105, 139);
+  opacity: 90%;
+  transition: height 0.5s, opacity 0.5s;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  &.hidden {
+    height: 0;
+    opacity: 0%;
+  }
+}
 #helper {
   opacity: 80%;
-  
+  max-width: 400px;
   position:fixed;
   display: flex;
   flex-direction:row;

@@ -19,7 +19,7 @@ function MouseCounter({ counterPosition, totalCount }) {
   );
 }
 
-function BreadLayer({ breadCoordinates, totalCount, dbBreadCoordinates }) {
+function BreadLayer({ localBreadCoordinates, totalCount, dbBreadCoordinates, randomBread, setRandomBread}) {
   const [breadImages, setBreadImages] = useState([]);
 
 
@@ -36,11 +36,12 @@ function BreadLayer({ breadCoordinates, totalCount, dbBreadCoordinates }) {
       }
       // Set the array of imported bread images
       setBreadImages(images);
+      setRandomBread(true);
     };
 
     // Call the function to import bread images
     importBreadImages();
-  }, []);
+  }, [randomBread]);
 
   const renderBread = (coordinate, index) => {
     if (coordinate == null) {
@@ -48,11 +49,11 @@ function BreadLayer({ breadCoordinates, totalCount, dbBreadCoordinates }) {
     }
 
     if ((coordinate.num - totalCount) + 1000 > 0) {
-      const type = (coordinate.type != null) ? breadImages[coordinate.type] : breadImage;
+      const type = (randomBread) ? (coordinate.type != null) ? breadImages[coordinate.type] : breadImage : breadImage;
       return (<img
         key={index}
         src={type}
-        alt="bread"
+        alt={breadImage}
         style={{
           position: 'absolute',
           left: coordinate.x,
@@ -67,7 +68,7 @@ function BreadLayer({ breadCoordinates, totalCount, dbBreadCoordinates }) {
     }
 
 
-  const breadElements = () => breadCoordinates.map(renderBread);
+  const breadElements = () => localBreadCoordinates.map(renderBread);
   const dbBreadElements = () => dbBreadCoordinates.map(renderBread);
 
   return (
@@ -107,7 +108,7 @@ function BreadText({ totalCount, milestone }) {
   );
 }
 
-function Widget({ count, milestone }) {
+function Widget({ count, milestone, totalCount }) {
   const [leaderboard, setLeaderboard] = useState([-1,-1,-1]);
   const [lastCount, setLastCount] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -115,6 +116,7 @@ function Widget({ count, milestone }) {
   const [offsetY, setOffsetY] = useState(0);
   const [top, setTop] = useState(50);
   const [left, setLeft] = useState(50);
+  const [isClicked, setIsClicked] = useState(false);
   
   
   useEffect(() => {
@@ -128,11 +130,15 @@ function Widget({ count, milestone }) {
         setLeft(clientX - offsetX);
       }
     };
+    const dblclick = (event) => {
+      setIsClicked((before) => !before);
+    };
 
     const handleEnd = () => {
       setIsDragging(false);
     };
-
+    const element = document.getElementById('helper');
+    element.addEventListener('dblclick', dblclick);
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleEnd);
     window.addEventListener('touchmove', handleMove, { passive: false });
@@ -141,6 +147,7 @@ function Widget({ count, milestone }) {
   
 
     return () => {
+      element.removeEventListener('dblclick', dblclick);
       window.removeEventListener('mousemove', handleMove);
       window.removeEventListener('mouseup', handleEnd);
       window.removeEventListener('touchmove', handleMove);
@@ -222,11 +229,12 @@ function Widget({ count, milestone }) {
         onTouchStart={handleStart}
         aria-label="Drag"
       >
-        leaderboard
+        {isClicked? 'Close' : 'Options'}
       </button>
       <div className="top">
         Milestone {milestone}
-        <div className="leaderboard-item">You: Score: {count}</div>
+        <div className="leaderboard-item">You: {count}</div>
+        <div className="leaderboard-item">Total: {totalCount}</div>
       </div>
     </div>
   );
@@ -236,22 +244,27 @@ function Widget({ count, milestone }) {
 */
 function MainApp() {
   const [milestone, setMilestone] = useState(-1);
-  const [breadCoordinates, setBreadCoordinates] = useState([]);
+  
+  const [localBreadCoordinates, setLocalBreadCoordinates] = useState([]);
   const [dbBreadCoordinates, setDbBreadCoordinates] = useState([]);
+  
   const [displayCounter, setDisplayCounter] = useState(0);
   const [breadCounter, setBreadCounter] = useState(0);
-  const [sessionCounter, setSessionCounter] = useState(0);
   const [dbCounter, setDbCounter] = useState(0);
+  
+  const [sessionCounter, setSessionCounter] = useState(0);
   const [counterPosition, setCounterPosition] = useState({ x: 0, y: 0 });
+  const [randomBread, setRandomBread] = useState(false);
+  const [clientId, setClientid] = useState(Math.floor(Math.random() * 10000));
 
   useEffect(() => {
 
     const addBreadCoordinates = (clientX, clientY, num) => {
-      const randomType = Math.floor(Math.random() * 110) + 1;
-      const newCoordinates = { x: Math.round((clientX + window.scrollX) / 5) * 5,  y: Math.round((clientY + window.scrollY) / 5) * 5, type: randomType, num: num };
-      // Check if the new coordinates already exist in the breadCoordinates
-      if (!breadCoordinates.some(coord => coord.x === newCoordinates.x && coord.y === newCoordinates.y)) {
-          setBreadCoordinates(prevCoordinates => [...prevCoordinates, newCoordinates]);
+      const randomType = Math.floor(Math.random() * 109) + 1;
+      const newCoordinates = { x: Math.round((clientX + window.scrollX) / 5) * 5,  y: Math.round((clientY + window.scrollY) / 5) * 5, type: randomType, num: num, id: clientId };
+      // Check if the new coordinates already exist in the localBreadCoordinates
+      if (!localBreadCoordinates.some(coord => coord.x === newCoordinates.x && coord.y === newCoordinates.y)) {
+          setLocalBreadCoordinates(prevCoordinates => [...prevCoordinates, newCoordinates]);
       }
     };
 
@@ -308,8 +321,9 @@ function MainApp() {
 
     const intervalId = setInterval(() => {
       if (breadCounter > 0 && dbCounter > 1000) {
-        updateBreadLocationsInDatabase(breadCoordinates, dbBreadCoordinates);
-        setBreadCoordinates([]);
+        updateBreadLocationsInDatabase(localBreadCoordinates, dbBreadCoordinates);
+        setLocalBreadCoordinates([]);
+        
         const temp = breadCounter + dbCounter;
         setBreadCounter(0);
         updateBreadCounterInDatabase(temp);
@@ -336,8 +350,8 @@ function MainApp() {
     }
 
     if (breadCounter > sessionCounter/15 && dbCounter > 500) {
-        updateBreadLocationsInDatabase(breadCoordinates, dbBreadCoordinates);
-        setBreadCoordinates([]);
+        updateBreadLocationsInDatabase(localBreadCoordinates, dbBreadCoordinates);
+        setLocalBreadCoordinates([]);
         const temp = breadCounter + dbCounter;
         setBreadCounter(0);
         updateBreadCounterInDatabase(temp);
@@ -400,10 +414,10 @@ function MainApp() {
 
   return (
     <>
-      <Widget count={sessionCounter} milestone={milestone}/>
+      <Widget setRandomBread={setRandomBread} count={sessionCounter} milestone={milestone} totalCount={displayCounter}/>
       <MouseCounter counterPosition={counterPosition} totalCount={displayCounter} />
       <BreadText totalCount={displayCounter} milestone={milestone} />
-      <BreadLayer breadCoordinates={breadCoordinates} dbBreadCoordinates={dbBreadCoordinates} totalCount={breadCounter + dbCounter} />
+      <BreadLayer setRandomBread={setRandomBread} randomBread={randomBread} localBreadCoordinates={localBreadCoordinates} dbBreadCoordinates={dbBreadCoordinates} totalCount={breadCounter + dbCounter} />
     </>
   );
 }

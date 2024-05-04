@@ -52,17 +52,23 @@ img {
 
 
 #helper {
-  opacity: 75%;
+  opacity: 80%;
+  
   position:fixed;
   display: flex;
   flex-direction:row;
   gap: 15px;
-  transition: opacity 0.5s ease;
+  transition: opacity 0.5s ease, background-color 0.5s;
+  border-radius: 10px;
+  padding: 3px 10px 3px 10px;
   z-index: 9999999;
+  background-color: rgba(0, 0, 0, 0);
   .main {
     height: 50px;
     align-self: center;
     transition: height 0.5s ease;
+    border: white solid 2px;
+    background-color: rgb(0, 105, 139);
   }
   .top, .bottom {
     transform: scaleY(0);
@@ -72,8 +78,10 @@ img {
     align-self: center;
   }
   &:hover {
+    background-color: rgba(0, 0, 0, 0.8);
     .top, .bottom {
       transform: scaleY(1);
+      
     }
     opacity: 100%;
     .main {

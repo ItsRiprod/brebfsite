@@ -102,7 +102,7 @@ function BreadText({ totalCount, milestone }) {
  * @param {*} param0 
  * @returns 
  */
-function Widget({ count, milestone, totalCount, breadImages, randomBread, setRandomBread }) {
+function Widget({ cps, count, milestone, totalCount, breadImages, randomBread, setRandomBread }) {
   const [leaderboard, setLeaderboard] = useState([-1,-1,-1]);
   const [lastCount, setLastCount] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -226,7 +226,7 @@ function Widget({ count, milestone, totalCount, breadImages, randomBread, setRan
         onTouchStart={handleStart}
         aria-label="Drag"
       >
-        {isClicked? 'Close' : 'Options'}
+        {isClicked? 'Close' : 'Menu'} {cps}
       </button>
       <div className="top">
         Milestone {milestone}
@@ -266,6 +266,9 @@ function MainApp() {
   const [counterPosition, setCounterPosition] = useState({ x: 0, y: 0 });
   const [randomBread, setRandomBread] = useState(-2);
   const [clientId, setClientid] = useState(Math.floor(Math.random() * 10000));
+  const [startTime, setStartTime] = useState(Date.now());
+  const [clicks, setClicks] = useState(1);
+  const [cps, setCps] = useState(0);
 
   const breadAmount = 1000;
   const [breadImages, setBreadImages] = useState([]);
@@ -304,6 +307,8 @@ function MainApp() {
     };
 
     const handleClick = (event) => {
+      setClicks(prevCount => prevCount + 1);
+      setCps((clicks / ((Date.now() - startTime) / 1265)).toFixed(2));
       const { clientX, clientY } = event;
       setBreadCounter(prevCounter => prevCounter + 1);
       addBreadCoordinates(clientX, clientY, breadCounter + dbCounter);
@@ -371,6 +376,10 @@ function MainApp() {
         updateBreadCounterInDatabase(breadCounter);
         setBreadCounter(0);
       }
+
+      setCps(0);
+      setClicks(0);
+      setStartTime(Date.now());
     }, 350);
 
     if (breadCounter + dbCounter >= milestone && dbCounter > 500) {
@@ -455,7 +464,7 @@ function MainApp() {
 
   return (
     <>
-      <Widget breadImages={breadImages} randomBread={randomBread} setRandomBread={setRandomBread} count={sessionCounter} milestone={milestone} totalCount={displayCounter}/>
+      <Widget cps={cps} breadImages={breadImages} randomBread={randomBread} setRandomBread={setRandomBread} count={sessionCounter} milestone={milestone} totalCount={displayCounter}/>
       <MouseCounter counterPosition={counterPosition} totalCount={displayCounter} />
       <BreadText totalCount={displayCounter} milestone={milestone} />
       <BreadLayer breadImages={breadImages} clientId={clientId} breadAmount={breadAmount} setRandomBread={setRandomBread} randomBread={randomBread} breadCoordinates={breadCoordinates} dbBreadCoordinates={dbBreadCoordinates} totalCount={breadCounter + dbCounter} />

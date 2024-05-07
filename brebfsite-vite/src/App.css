@@ -95,7 +95,7 @@ img.thumbnail {
 }
 #helper {
   opacity: 80%;
-  max-width: 400px;
+  max-width: 500px;
   position:fixed;
   display: flex;
   flex-direction:row;

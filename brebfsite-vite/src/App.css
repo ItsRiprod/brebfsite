@@ -42,10 +42,6 @@ img.background {
   &.fade {
     animation: fadeAndScale 0.5s forwards;
   }
-  &:nth-last-of-type(-n + 100):hover
-    {
-      transform: translateX(-50px) translateY(-50px) scale(1.1);
-    }
 }
 
 img.thumbnail {
@@ -89,12 +85,21 @@ img.thumbnail {
   overflow-y: scroll;
   overflow-x: hidden;
   scrollbar-width: thin;
+  gap: 10px;
+  scrollbar-color: #00698b #000000;
   &.hidden {
     height: 0;
     opacity: 0%;
   }
 }
 .thumbnail-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  border-radius: 15px;
+  padding: 10px;
+  background-color: #00698b;
+  border: black solid 2px;
 }
 #helper {
   opacity: 80%;
@@ -113,6 +118,7 @@ img.thumbnail {
     flex-direction:row;
     justify-content: space-between;
     gap: 15px;
+    max-height: 100px;
   }
   .main {
     height: 50px;
@@ -123,7 +129,7 @@ img.thumbnail {
     align-self: auto;
     margin-right: 3vw;
   }
-  .top, .bottom {
+  .top {
     transform: scaleY(0);
     transition: transform 0.5s ease;
     margin-left: 3vw;
@@ -134,7 +140,7 @@ img.thumbnail {
     margin-left: 0px;
   }
   &:hover {
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(0, 0, 0, 0.8);
     .top, .bottom {
       transform: scaleY(1);
       
@@ -153,9 +159,28 @@ img.thumbnail {
 }
 
 .leaderboard {
-  
+  display: flex;
+  flex-direction: column;
+  align-items: baseline;
+  max-height: 100px;
   
   .leaderboard-item {
+    
+    background: gray;
+    border-radius: 5px;
+    display: flex;
+    padding: 0px 5px;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    p {
+      padding: 0;
+      margin: 0;
+    }
+    .lbImage {
+      width: 30px;
+      height: 30px;
+    }
 
   }
 }

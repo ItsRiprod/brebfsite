@@ -20,7 +20,7 @@ function MouseCounter({ counterPosition, totalCount }) {
 }
 
 function BreadLayer({ breadImages, breadCoordinates, totalCount, dbBreadCoordinates, randomBread, setRandomBread, breadAmount, clientId}) {
-  
+
 
   const renderBread = (coordinate, index) => {
     if (coordinate == null) {
@@ -35,10 +35,12 @@ function BreadLayer({ breadImages, breadCoordinates, totalCount, dbBreadCoordina
 
     if ((coordinate.num - totalCount) + breadAmount + 100 > 0) {
       const type = (randomBread != -2) ? (coordinate.type != null) ? breadImages[coordinate.type] : breadImage : breadImage;
+
       return (
       <img
-        className={(coordinate.fade ? " fade " : "") + coordinate.parent + " background"}
-        key={index}
+      draggable="false"
+      key={index}
+      className={(coordinate.fade ? " fade " : "") + coordinate.parent + " background"}
         src={type}
         alt={breadImage}
         style={{
@@ -47,24 +49,25 @@ function BreadLayer({ breadImages, breadCoordinates, totalCount, dbBreadCoordina
           top: coordinate.y,
           opacity: Math.max(0.01 * ((coordinate.num - totalCount) + breadAmount), 0)
         }}
-        draggable="false"
-        />)
-      } else {
-        return null;
-      }
+        />
+      );
     }
+    return null;
+  
+    };
 
 
     
     
-    const dbBreadElements = () => Object.values(dbBreadCoordinates).filter((old) => old.id != clientId).map(renderBread);
-    const breadElements = () => Object.values(breadCoordinates).map(renderBread);
-    
+    //const dbBreadElements = () => Object.values(dbBreadCoordinates).filter((old) => old.id != clientId).map(renderBread);
+    //const breadElements = () => Object.values(breadCoordinates).map(renderBread);
 
   return (
     <>
-      {dbBreadElements()}
-      {breadElements()}
+    <div>
+      {Object.values(dbBreadCoordinates).filter((old) => old.id !== clientId).map(renderBread)}
+      {breadCoordinates.map(renderBread)}
+    </div>
     </>
   );
 }
@@ -102,101 +105,46 @@ function BreadText({ totalCount, milestone }) {
  * @param {*} param0 
  * @returns 
  */
-function Widget({ cps, count, milestone, totalCount, breadImages, randomBread, setRandomBread }) {
-  const [leaderboard, setLeaderboard] = useState([-1,-1,-1]);
+function Widget({ dbAccounts, accounts, cps, count, milestone, totalCount, breadImages, randomBread, setRandomBread }) {
+  const [leaderboard, setLeaderboard] = useState([
+    {
+      img: breadImages[0],
+      score: 0
+    },
+    {
+      img: breadImages[0],
+      score: 0
+    },
+    {
+      img: breadImages[0],
+      score: 0
+    }
+  ]);
   const [lastCount, setLastCount] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [offsetX, setOffsetX] = useState(0);
-  const [offsetY, setOffsetY] = useState(0);
-  const [top, setTop] = useState(50);
-  const [left, setLeft] = useState(50);
  
   
   useEffect(() => {
-
-
-    const handleMove = (event) => {
-      if (isDragging) {
-        event.preventDefault(); // Prevent default scroll behavior
-        const { clientX, clientY } = event.type.includes('touch') ? event.touches[0] : event;
-        setTop(clientY - offsetY);
-        setLeft(clientX - offsetX);
+    // Get Leaderboard
+    const newLeaderboard = [...leaderboard];
+  
+    for (const i in dbAccounts) {
+      const score = (dbAccounts[i].score + (accounts[i] ? accounts[i].score : 0));
+  
+      if (score >= newLeaderboard[0].score) {
+        newLeaderboard[0] = { img: breadImages[i], score };
+      } else if (score >= newLeaderboard[1].score) {
+        newLeaderboard[1] = { img: breadImages[i], score };
+      } else if (score >= newLeaderboard[2].score) {
+        newLeaderboard[2] = { img: breadImages[i], score };
       }
-    };
-    
-
-    const handleEnd = () => {
-      setIsDragging(false);
-    };
-    window.addEventListener('mousemove', handleMove);
-    window.addEventListener('mouseup', handleEnd);
-    window.addEventListener('touchmove', handleMove, { passive: false });
-    window.addEventListener('touchend', handleEnd);
+    }
+  
+    setLeaderboard(newLeaderboard);
+  }, [dbAccounts, accounts, breadImages]);
 
   
 
-    return () => {
-      window.removeEventListener('mousemove', handleMove);
-      window.removeEventListener('mouseup', handleEnd);
-      window.removeEventListener('touchmove', handleMove);
-      window.removeEventListener('touchend', handleEnd);
-    };
-    
-    
-  }, [isDragging, offsetX, offsetY]);
 
-  useEffect(() => {
-    
-    const updateLeaderboardInDatabase = (lb, index) => {
-      if (lb.length > 2) {
-        const leaderboardRef = ref(database, `/leaderboard/${index}`);
-        set(leaderboardRef, lb); // Assuming 'lb' is the entire leaderboard array
-      }
-    };
-    
-    const intervalId = setInterval(() => {
-      if (count > lastCount) {
-
-        // Check if count is greater than any value in leaderboard
-        let indexToUpdate = -1;
-        leaderboard.forEach((value, index) => {
-          if (count > value && indexToUpdate == -1) {
-            indexToUpdate = index;
-          }
-        });
-        
-        // Update leaderboard if count passes any position
-        if (indexToUpdate !== -1) {
-          updateLeaderboardInDatabase(count, indexToUpdate);
-        }
-        setLastCount(count);
-      }
-    }, 100);
-    
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [count, lastCount]);
-  
-  const handleStart = (event) => {
-    setIsDragging(true);
-    const { clientX, clientY } = event.type.includes('touch') ? event.touches[0] : event;
-    const helperRect = document.getElementById('helper').getBoundingClientRect();
-    setOffsetX(clientX - helperRect.left);
-    setOffsetY(clientY - helperRect.top);
-  };
-
-
-  useEffect(() => {
-    const leaderboardRef = ref(database, '/leaderboard');
-    const unsubscribeBread = onValue(leaderboardRef, (snapshot) => {
-      setLeaderboard(snapshot.val());
-    });
-
-    return () => {
-      off(leaderboardRef, 'value', unsubscribeBread);
-    };
-  }, []);
 
   const handleThumbnailClick = (index) => {
     setRandomBread(index);
@@ -209,24 +157,22 @@ function Widget({ cps, count, milestone, totalCount, breadImages, randomBread, s
 
         <div className="bottom">
           <div className="leaderboard">
-            {leaderboard.map((position, index) => (
+            {leaderboard != null ? leaderboard.map((item, index) => (
               <div key={index} className="leaderboard-item">
-                {index}: Score: {position}
+                <img className="lbImage" src={randomBread != -2 ? item.img : breadImage} /> <p>Score: {item.score}</p>
               </div>
-            ))}
+            )) : <div className="leaderboard-item">Leaderboard and stuff</div>}
 
           </div>
         </div>
         <div className="top">
-          Milestone {milestone}
-          <div className="leaderboard-item">You: {count}</div>
-          <div className="leaderboard-item">Total: {totalCount}</div>
+          <div className="stat-item">Next Milestone {milestone}</div>
+          <div className="stat-item">You: {count}</div>
+          <div className="stat-item">Total: {totalCount}</div>
         </div>
         <button
           className="main"
           id="settingsButton"
-          onMouseDown={handleStart}
-          onTouchStart={handleStart}
           aria-label="Drag"
         >
           Menu {cps}
@@ -238,9 +184,13 @@ function Widget({ cps, count, milestone, totalCount, breadImages, randomBread, s
               <button onClick={() => handleThumbnailClick(-2)}>Simple</button>
             </div>
           
-            {breadImages.map((img, index) => (
+            {dbAccounts.map((bread, index) => (
               <div key={index} className="thumbnail-container">
-                <img className="thumbnail" src={img} alt="bread" onClick={() => handleThumbnailClick(index)} />
+                <img className="thumbnail" src={breadImages[index]} alt={breadImages[index]} onClick={() => handleThumbnailClick(index)} />
+                <div>
+                  <p>Score: {bread.score}</p>
+                  <p>Milestone: {bread.milestone}</p>
+                </div>
               </div>
             ))}        
       </section>
@@ -265,6 +215,8 @@ function MainApp() {
   const [startTime, setStartTime] = useState(Date.now());
   const [clicks, setClicks] = useState(1);
   const [cps, setCps] = useState(0);
+  const [accounts, setAccounts] = useState([]);
+  const [dbAccounts, setDbAccounts] = useState([]);
 
   const breadAmount = 1000;
   const [breadImages, setBreadImages] = useState([]);
@@ -292,8 +244,7 @@ function MainApp() {
 
   useEffect(() => {
 
-    const addBreadCoordinates = (clientX, clientY, num) => {
-      const randomType = (randomBread == -1 || randomBread == -2) ? Math.floor(Math.random() * 109) + 1 : randomBread;
+    const addBreadCoordinates = (clientX, clientY, num, randomType) => {
       const newCoordinates = { x: Math.round((clientX + window.scrollX) / 5) * 5,  y: Math.round((clientY + window.scrollY) / 5) * 5, type: randomType, num: num, id: clientId };
       // Check if the new coordinates already exist in the breadCoordinates
       if (!breadCoordinates.some(coord => coord.x === newCoordinates.x && coord.y === newCoordinates.y)) {
@@ -302,29 +253,48 @@ function MainApp() {
       }
     };
 
-    const handleClick = (event) => {
-      setClicks(prevCount => prevCount + 1);
-      setCps((clicks / ((Date.now() - startTime) / 1265)).toFixed(2));
+    const handleClick =  (event) => {
       const { clientX, clientY } = event;
+      const randomType = (randomBread == -1 || randomBread == -2) ? Math.floor(Math.random() * 109) + 1 : randomBread;
+
+      
+      setClicks(prevCount => prevCount + 1);
       setBreadCounter(prevCounter => prevCounter + 1);
-      addBreadCoordinates(clientX, clientY, breadCounter + dbCounter);
+      addBreadCoordinates(clientX, clientY, breadCounter + dbCounter, randomType);
       setSessionCounter(prevCounter => prevCounter + 1);
       setDisplayCounter(prevCount => prevCount + 1);
+      
+      if (accounts[randomType] != null) {
+         setAccounts((prevAccounts) => ({
+              ...prevAccounts,
+              [randomType]: {
+                ...prevAccounts[randomType],
+                score: (prevAccounts[randomType]?.score || 0) + 1,
+              },
+            }));
+      } else {
+         setAccounts((prevAccounts) => ({
+          ...prevAccounts,
+          [randomType]: {
+            score: 1,
+            milestones: 0
+          },
+        }));
+      }
+      
+      const newCps = (clicks / ((Date.now() - startTime) / 1265)).toFixed(2)
+       setCps(newCps);
+      
     };
 
-    const handleMouseMove = (event) => {
-      const { clientX, clientY } = event;
-      setCounterPosition({ x: clientX + window.scrollX, y: clientY + window.scrollY });
-    };
+    
 
     document.addEventListener("click", handleClick);
-    document.addEventListener("mousemove", handleMouseMove);
 
     return () => {
       document.removeEventListener("click", handleClick);
-      document.removeEventListener("mousemove", handleMouseMove);
     };
-  }, [sessionCounter, randomBread]);
+  }, [accounts, breadCoordinates, breadCounter, clicks, clientId, dbCounter, randomBread, startTime]);
 
   useEffect(() => {
     
@@ -360,23 +330,33 @@ function MainApp() {
         const breadRef = ref(database, '/');
         
         const updates = {};
-        updates[`/bread`] = increment(count);
+        updates[`/bread`] = increment(breadCounter);
+        for (var i in accounts) {
+          if (accounts[i] != null) {
+            updates[`/accounts/${i}/score`] = increment(accounts[i].score || 0);
+            updates[`/accounts/${i}/milestone`] = increment(accounts[i].milestones || 0);
+          }
+        }
+        
         update(breadRef, updates);
+        setBreadCounter(0);
+        setAccounts({});
 
     };
 
-    const intervalId = setInterval(() => {
+    const timeoutId = setTimeout(() => {
       if (breadCounter > 0 && displayCounter > 1000) {
         updateBreadLocationsInDatabase(breadCoordinates, dbBreadCoordinates);
         
         updateBreadCounterInDatabase(breadCounter);
-        setBreadCounter(0);
+   
       }
 
       setCps(0);
       setClicks(0);
       setStartTime(Date.now());
-    }, 350);
+      console.log("Interval");
+    }, 400);
 
     if (breadCounter + dbCounter >= milestone && dbCounter > 500) {
       if (milestone < 0) {
@@ -393,7 +373,7 @@ function MainApp() {
         updateBreadMilestoneInDatabase(newMilestone);
         
         updateBreadCounterInDatabase(breadCounter);
-        setBreadCounter(0);
+     
       }
     }
 
@@ -401,19 +381,20 @@ function MainApp() {
         updateBreadLocationsInDatabase(breadCoordinates, dbBreadCoordinates);
         
         updateBreadCounterInDatabase(breadCounter);
-        setBreadCounter(0);
+      
     }
 
 
     return () => {
-      clearInterval(intervalId);
+      clearTimeout(timeoutId);
     };
-  }, [breadCounter, dbCounter, milestone]);
+  }, [accounts, breadCoordinates, breadCounter, clientId, dbBreadCoordinates, dbCounter, displayCounter, milestone, sessionCounter]);
 
   useEffect(() => {
     const breadRef = ref(database, '/bread');
     const milestoneRef = ref(database, '/milestonebread');
     const coordRef = ref(database, '/coordinates');
+    const accountRef = ref(database, '/accounts');
     const unsubscribeBread = onValue(breadRef, (snapshot) => {
       setDbCounter(snapshot.val());
     });
@@ -423,35 +404,35 @@ function MainApp() {
     const unsubscribeCoords = onValue(coordRef, (snapshot) => {
       setDbBreadCoordinates(snapshot.val());
     });
+    const unsubscribeAccounts = onValue(accountRef, (snapshot) => {
+      setDbAccounts(snapshot.val());
+    });
 
     return () => {
       off(breadRef, 'value', unsubscribeBread);
       off(milestoneRef, 'value', unsubscribeMilestone);
       off(coordRef, 'value', unsubscribeCoords);
+      off(accountRef, 'value', unsubscribeAccounts);
     };
   }, []);
-
+  
   useEffect(() => {
+   
     const intervalId = setInterval(() => {
       if (displayCounter < (dbCounter) && displayCounter != 0) {
 
         const temp = (breadCounter + dbCounter);
         
         const step = Math.ceil((temp-displayCounter) / 10); // Define a step for gradual increase
-        
-        const updateBreadCounter = () => {
-          if (displayCounter < temp) {
-            setDisplayCounter(prevCounter => prevCounter + step);
-          } else {
-            clearInterval(intervalId); // Clear interval once reached or exceeded the target
-          }
-        };
-
-        updateBreadCounter(); // Call the function once immediately
+       
+        setDisplayCounter(prevCounter => prevCounter + step); // Call the function once immediately
       } else if (displayCounter == 0 && dbCounter != 0) {
-        setDisplayCounter(dbCounter);
+        setDisplayCounter(dbCounter - 100);
+      } else {
+        clearInterval(intervalId);
       }
-    }, 100); // Adjust the interval as needed
+      
+    }, 80); // Adjust the interval as needed
   
     return () => {
       clearInterval(intervalId);
@@ -460,7 +441,7 @@ function MainApp() {
 
   return (
     <>
-      <Widget cps={cps} breadImages={breadImages} randomBread={randomBread} setRandomBread={setRandomBread} count={sessionCounter} milestone={milestone} totalCount={displayCounter}/>
+      <Widget accounts={accounts} dbAccounts={dbAccounts} cps={cps} breadImages={breadImages} randomBread={randomBread} setRandomBread={setRandomBread} count={sessionCounter} milestone={milestone} totalCount={displayCounter}/>
       <MouseCounter counterPosition={counterPosition} totalCount={displayCounter} />
       <BreadText totalCount={displayCounter} milestone={milestone} />
       <BreadLayer breadImages={breadImages} clientId={clientId} breadAmount={breadAmount} setRandomBread={setRandomBread} randomBread={randomBread} breadCoordinates={breadCoordinates} dbBreadCoordinates={dbBreadCoordinates} totalCount={breadCounter + dbCounter} />

@@ -110,8 +110,7 @@ function Widget({ cps, count, milestone, totalCount, breadImages, randomBread, s
   const [offsetY, setOffsetY] = useState(0);
   const [top, setTop] = useState(50);
   const [left, setLeft] = useState(50);
-  const [isClicked, setIsClicked] = useState(false);
-  
+ 
   
   useEffect(() => {
 
@@ -124,15 +123,11 @@ function Widget({ cps, count, milestone, totalCount, breadImages, randomBread, s
         setLeft(clientX - offsetX);
       }
     };
-    const dblclick = (event) => {
-      setIsClicked((before) => !before);
-    };
+    
 
     const handleEnd = () => {
       setIsDragging(false);
     };
-    const element = document.getElementById('helper');
-    element.addEventListener('dblclick', dblclick);
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleEnd);
     window.addEventListener('touchmove', handleMove, { passive: false });
@@ -141,7 +136,6 @@ function Widget({ cps, count, milestone, totalCount, breadImages, randomBread, s
   
 
     return () => {
-      element.removeEventListener('dblclick', dblclick);
       window.removeEventListener('mousemove', handleMove);
       window.removeEventListener('mouseup', handleEnd);
       window.removeEventListener('touchmove', handleMove);
@@ -208,47 +202,49 @@ function Widget({ cps, count, milestone, totalCount, breadImages, randomBread, s
     setRandomBread(index);
   };
 
+
   return (<>
-    <div id="helper" style={{ top: `${top}px`, left: `${left}px` }}>
-      <div className="bottom">
-        <div className="leaderboard">
-          {leaderboard.map((position, index) => (
-            <div key={index} className="leaderboard-item">
-              {index}: Score: {position}
-            </div>
-          ))}
-          
-        </div>
-      </div>
-      <button
-        className="main"
-        onMouseDown={handleStart}
-        onTouchStart={handleStart}
-        aria-label="Drag"
-      >
-        {isClicked? 'Close' : 'Menu'} {cps}
-      </button>
-      <div className="top">
-        Milestone {milestone}
-        <div className="leaderboard-item">You: {count}</div>
-        <div className="leaderboard-item">Total: {totalCount}</div>
-      </div>
-    </div>
-    <section style={{ top: `${top + 103}px`, left: `${left}px` }} id="settings" className={(isClicked ? "" : "hidden")}>
-          <div>
-            <button onClick={() => handleThumbnailClick(-1)}>Random</button>
-            <button onClick={() => handleThumbnailClick(-2)}>Simple</button>
-          </div>
-          <div>
-          {breadImages.map((img, index) => (
-            <div key={index} className="thumbnail-container">
-              <img className="thumbnail" src={img} alt="bread" />
-              <button onClick={() => handleThumbnailClick(index)}>{index}</button>
-            </div>
-          ))}
+    <div id="helper" /*style={{ top: `${top}px`, left: `${left}px` }}*/>
+      <div className="helper-inner">
+
+        <div className="bottom">
+          <div className="leaderboard">
+            {leaderboard.map((position, index) => (
+              <div key={index} className="leaderboard-item">
+                {index}: Score: {position}
+              </div>
+            ))}
 
           </div>
-    </section>
+        </div>
+        <div className="top">
+          Milestone {milestone}
+          <div className="leaderboard-item">You: {count}</div>
+          <div className="leaderboard-item">Total: {totalCount}</div>
+        </div>
+        <button
+          className="main"
+          id="settingsButton"
+          onMouseDown={handleStart}
+          onTouchStart={handleStart}
+          aria-label="Drag"
+        >
+          Menu {cps}
+        </button>
+      </div>
+      <section id="settings">
+            <div style={{width: "100%", paddingTop: "10px"}}>
+              <button onClick={() => handleThumbnailClick(-1)}>Random</button>
+              <button onClick={() => handleThumbnailClick(-2)}>Simple</button>
+            </div>
+          
+            {breadImages.map((img, index) => (
+              <div key={index} className="thumbnail-container">
+                <img className="thumbnail" src={img} alt="bread" onClick={() => handleThumbnailClick(index)} />
+              </div>
+            ))}        
+      </section>
+    </div>
   </>
   );
 }

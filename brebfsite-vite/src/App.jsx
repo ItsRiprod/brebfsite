@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import "./App.css";
 import breadImage from "/bread.svg"; // Import bread.svg
 import { initializeApp } from "firebase/app";
@@ -11,15 +11,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig); // Initialize Firebase app outside the component
 const database = getDatabase(app);
 
-function MouseCounter({ counterPosition, totalCount }) {
-  return (
-    <div className="counter" style={{ left: counterPosition.x + 5, top: counterPosition.y - 15 }}>
-      {totalCount.toLocaleString()}
-    </div>
-  );
-}
-
-function BreadLayer({ breadImages, breadCoordinates, totalCount, dbBreadCoordinates, randomBread, setRandomBread, breadAmount, clientId}) {
+function BreadLayer({ breadImages, breadCoordinates, totalCount, dbBreadCoordinates, randomBread, breadAmount, clientId}) {
 
 
   const renderBread = (coordinate, index) => {
@@ -120,11 +112,28 @@ function Widget({ dbAccounts, accounts, cps, count, milestone, totalCount, bread
       score: 0
     }
   ]);
-  const [lastCount, setLastCount] = useState(0);
  
   
-  useEffect(() => {
-    // Get Leaderboard
+  //useEffect(() => {
+  //  // Get Leaderboard
+  //  const newLeaderboard = [...leaderboard];
+  //
+  //  for (const i in dbAccounts) {
+  //    const score = (dbAccounts[i].score + (accounts[i] ? accounts[i].score : 0));
+  //
+  //    if (score >= newLeaderboard[0].score) {
+  //      newLeaderboard[0] = { img: breadImages[i], score };
+  //    } else if (score >= newLeaderboard[1].score) {
+  //      newLeaderboard[1] = { img: breadImages[i], score };
+  //    } else if (score >= newLeaderboard[2].score) {
+  //      newLeaderboard[2] = { img: breadImages[i], score };
+  //    }
+  //  }
+  //
+  //  setLeaderboard(newLeaderboard);
+  //}, [dbAccounts, accounts, breadImages]);
+
+  const memoizedLeaderboard = useMemo(() => {
     const newLeaderboard = [...leaderboard];
   
     for (const i in dbAccounts) {
@@ -139,8 +148,12 @@ function Widget({ dbAccounts, accounts, cps, count, milestone, totalCount, bread
       }
     }
   
-    setLeaderboard(newLeaderboard);
-  }, [dbAccounts, accounts, breadImages]);
+    return newLeaderboard;
+  }, [accounts]);
+  
+  useEffect(() => {
+    setLeaderboard(memoizedLeaderboard);
+  }, [memoizedLeaderboard]);
 
   
 
@@ -209,7 +222,6 @@ function MainApp() {
   const [breadCounter, setBreadCounter] = useState(0);
   const [sessionCounter, setSessionCounter] = useState(0);
   const [dbCounter, setDbCounter] = useState(0);
-  const [counterPosition, setCounterPosition] = useState({ x: 0, y: 0 });
   const [randomBread, setRandomBread] = useState(-2);
   const [clientId, setClientid] = useState(Math.floor(Math.random() * 10000));
   const [startTime, setStartTime] = useState(Date.now());
@@ -249,7 +261,7 @@ function MainApp() {
       // Check if the new coordinates already exist in the breadCoordinates
       if (!breadCoordinates.some(coord => coord.x === newCoordinates.x && coord.y === newCoordinates.y)) {
         // Add the new coordinates to the filtered array
-        setBreadCoordinates((oldBread) => [...oldBread, newCoordinates]);  
+        setBreadCoordinates((oldBread) => oldBread.concat(newCoordinates));  
       }
     };
 
@@ -326,7 +338,7 @@ function MainApp() {
       update(coordinatesRef, updates ).then(() => {});
     };
 
-    const updateBreadCounterInDatabase = (count) => {
+    const updateBreadCounterInDatabase = () => {
         const breadRef = ref(database, '/');
         
         const updates = {};
@@ -344,21 +356,23 @@ function MainApp() {
 
     };
 
+    // Update bread after a delay of 400ms
     const timeoutId = setTimeout(() => {
       if (breadCounter > 0 && displayCounter > 1000) {
         updateBreadLocationsInDatabase(breadCoordinates, dbBreadCoordinates);
         
-        updateBreadCounterInDatabase(breadCounter);
+        updateBreadCounterInDatabase();
    
       }
 
       setCps(0);
       setClicks(0);
       setStartTime(Date.now());
-      console.log("Interval");
     }, 400);
 
+    // Force update when a milestone is reached
     if (breadCounter + dbCounter >= milestone && dbCounter > 500) {
+      // Ensure the milestone is updated
       if (milestone < 0) {
         const milestoneRef = ref(database, '/milestonebread');
         get(milestoneRef).then((snapshot) => {
@@ -368,19 +382,20 @@ function MainApp() {
           }
         });
       } else {
-        const newMilestone = Math.floor(Math.random() * 2000) + milestone;
+        // Actually updating
+        const newMilestone = Math.floor(Math.random() * 1000) + milestone; // Calculate new milestone 
         setMilestone(newMilestone);
         updateBreadMilestoneInDatabase(newMilestone);
-        
-        updateBreadCounterInDatabase(breadCounter);
+        updateBreadCounterInDatabase();
      
       }
     }
 
+    // Update the bread locations in the database (nearly) every click
     if (breadCounter > sessionCounter/15 && dbCounter > 500) {
         updateBreadLocationsInDatabase(breadCoordinates, dbBreadCoordinates);
         
-        updateBreadCounterInDatabase(breadCounter);
+        updateBreadCounterInDatabase();
       
     }
 
@@ -437,14 +452,13 @@ function MainApp() {
     return () => {
       clearInterval(intervalId);
     };
-  }, [displayCounter,  dbCounter]);
+  }, [displayCounter, dbCounter, breadCounter]);
 
   return (
     <>
       <Widget accounts={accounts} dbAccounts={dbAccounts} cps={cps} breadImages={breadImages} randomBread={randomBread} setRandomBread={setRandomBread} count={sessionCounter} milestone={milestone} totalCount={displayCounter}/>
-      <MouseCounter counterPosition={counterPosition} totalCount={displayCounter} />
       <BreadText totalCount={displayCounter} milestone={milestone} />
-      <BreadLayer breadImages={breadImages} clientId={clientId} breadAmount={breadAmount} setRandomBread={setRandomBread} randomBread={randomBread} breadCoordinates={breadCoordinates} dbBreadCoordinates={dbBreadCoordinates} totalCount={breadCounter + dbCounter} />
+      <BreadLayer breadImages={breadImages} clientId={clientId} breadAmount={breadAmount} randomBread={randomBread} breadCoordinates={breadCoordinates} dbBreadCoordinates={dbBreadCoordinates} totalCount={breadCounter + dbCounter} />
     </>
   );
 }
